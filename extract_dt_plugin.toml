@@ -1,0 +1,58 @@
+[general]
+  case = "EXTRACT_DT"
+
+[general.plugin_registry.plugins]
+  extract_dt_plugin = "/home/cv6/DEODE/plugins/"
+
+[general.times]
+  end = "2025-01-31T00:00:00Z"
+  forecast_range = "PT2H"
+  start = "2025-01-25T00:00:00Z"
+
+[extract_dt]
+  class_mars = "RD"
+  class_polytope = "D1"
+  dataset = "extremes_dt"
+  delay = "PT1D14H"
+  dt_grib_path = "@REFERENCE_DATA@/DT/@YYYY@/@MM@/@DD@"
+  expver_mars = "iekm"
+  expver_polytope = "0001"
+  # area = "72.0/-26.0/26.0/30.0"
+  # sfc is grid point, so we can retrieve at high resolution
+  # but transforms at this resolution are too slow, so UA data at lower reso
+  grid_sfc = "0.05/0.05"
+  grid_ua = "0.1/0.1"
+  levelist_ua = "50/100/150/200/250/300/400/500/700/850/925/1000"
+  levtype_sfc = "SFC"
+  levtype_ua = "PL"
+  method = "mars"
+  #model_name = "DTmars"
+  param_sfc = "49/131/132/134/141/151/164/165/166/167/168/186/187/188/228"
+  param_ua = "130/131/132/157"
+  stream = "OPER"
+  type = "FC"
+
+[extractsqlite]
+  parameter_list = "@DEODE_HOME@/data/sqlite/param_list_@CSC@.json"
+  selection = "PT1H"
+  sqlite_model_name = "DTmars"
+  sqlite_path = "@ARCHIVE_ROOT@/sqlite/FCTABLE/@SQLITE_MODEL_NAME@/@YYYY@/@MM@"
+  sqlite_template = "FCTABLE_{PP}_{YYYY}{MM}_{HH}.sqlite"
+  station_list = "@DEODE_HOME@/data/sqlite/station_list_default.csv"  
+
+[submission.task_exceptions.RetrieveDT]
+  # to find mars executable
+  bindir = "/usr/local/bin/"
+
+[submission.task_exceptions.RetrieveDT.BATCH]
+  MEM = "#SBATCH --mem=0GB"
+  NODES = "#SBATCH --nodes=1"
+  NTASKS = "#SBATCH --ntasks=1"
+  QOS = "#SBATCH --qos=np"
+  WALLTIME = "#SBATCH --time=03:00:00"
+
+[submission.task_exceptions.RetrieveDT.ENV]
+  MARS_READANY_BUFFER_SIZE = 17893020000
+
+[suite_control]
+  suite_definition = "DtExtractSuiteDefinition"
