@@ -34,7 +34,7 @@ class RetrieveDT(Task):
         # Get the times from config.toml
         self.basetime = as_datetime(self.config["general.times.basetime"])
         self.minstep = 0
-        self.maxstep = as_timedelta(config["general.times.forecast_range"]).seconds//3600
+        self.maxstep = int(as_timedelta(config["general.times.forecast_range"]).total_seconds()//3600)
         self.steplist = [ str(i) for i in range(self.minstep,self.maxstep + 1) ]
 
         self.dt_path = self.platform.substitute(
@@ -42,6 +42,7 @@ class RetrieveDT(Task):
             basetime=self.basetime,
         )
         logger.info("DT PATH: {}", self.dt_path)
+        logger.info("MIN/MAX STEP: {} {}", self.minstep, self.maxstep)
 
     def create_request(self, tag = "sfc"):
         allsteps = "/".join(self.steplist)
