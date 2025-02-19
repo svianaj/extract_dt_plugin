@@ -36,7 +36,7 @@ class ExtractDT(Task):
         dt_date = self.basetime.strftime("%Y%m%d")
 
         self.minstep = 0
-        self.maxstep = as_timedelta(config["general.times.forecast_range"]).seconds//3600
+        self.maxstep = int(as_timedelta(config["general.times.forecast_range"]).total_seconds()//3600)
         self.steplist = [ str(i) for i in range(self.minstep,self.maxstep + 1) ]
         self.dt_path = self.platform.substitute(
             config["extract_dt.dt_grib_path"],
