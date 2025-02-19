@@ -34,7 +34,7 @@ class RetrieveDT(Task):
         # Get the times from config.toml
         self.basetime = as_datetime(self.config["general.times.basetime"])
         self.minstep = 0
-        self.maxstep = as_timedelta(config["general.times.forecast_range"]).seconds//3600
+        self.maxstep = int(as_timedelta(config["general.times.forecast_range"]).total_seconds()//3600)
         self.steplist = [ str(i) for i in range(self.minstep,self.maxstep + 1) ]
 
         self.dt_path = self.platform.substitute(
@@ -42,6 +42,7 @@ class RetrieveDT(Task):
             basetime=self.basetime,
         )
         logger.info("DT PATH: {}", self.dt_path)
+        logger.info("MIN/MAX STEP: {} {}", self.minstep, self.maxstep)
 
     def create_request(self, tag = "sfc"):
         allsteps = "/".join(self.steplist)
@@ -59,7 +60,7 @@ class RetrieveDT(Task):
             request["class"] = self.config["extract_dt.class_mars"]
             request["expver"] = self.config["extract_dt.expver_mars"]
         elif method == "polytope":
-            request["dataset"] = "dt_extremes"
+            request["dataset"] = "extremes-dt"
             request["class"] = self.config["extract_dt.class_polytope"]
             request["expver"] = self.config["extract_dt.expver_polytope"]
 
@@ -111,9 +112,14 @@ class RetrieveDT(Task):
 
     def doreq_polytope(self, request, tag):
         logger.info("POLYTOPE REQUEST: {}", request)
-        #from polytope.api import Client
-        #client = Client(address="polytope.lumi.apps.dte.destination-earth.eu")
-        #files = client.retrieve("destination-earth", request)
+        from polytope.api import Client
+        client = Client(address="polytope.lumi.apps.dte.destination-earth.eu")
+        # dt_collection = "destination-earth"  # DESP account
+        dt_collection = "ecmwf-destination-earth"  # ECMWF account
+        files = client.retrieve(dt_collection, request)
+        # NOTE: this will retrieve global data in "raw" form.
+        # And ALL IN ONE FILE ?!!!
+        # we need earthkit to interpolate to station locations.
 
     @staticmethod
     def write_mars_req(request, filename, method):

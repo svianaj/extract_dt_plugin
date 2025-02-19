@@ -47,8 +47,9 @@ class ExtractDT(Task):
 
         self.archive = self.platform.get_system_value("archive")
 
-        self.sqlite_path = self.config["extractsqlite.sqlite_path"]
-
+        self.sqlite_path = self.platform.substitute(
+            self.config["extractsqlite.sqlite_path"]
+        )
         self.sqlite_template = self.platform.substitute(
             self.config["extractsqlite.sqlite_template"]
         )
