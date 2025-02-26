@@ -71,13 +71,30 @@ class ExtractDT(Task):
         """Execute ExtractSQLite on all files."""
         station_list = pandas.read_csv(self.stationfile, skipinitialspace=True)
 
-        for tag in [ "sfc", "ua" ]:
-            flist = [ f"{tag}_{i}.grib1" for i in self.steplist ]
+        # Determine log file path
+        log_file_name = self.config["extractsqlite"].get("log_file")
+        log_file_path = os.path.join(self.sqlite_path, log_file_name) if log_file_name else None
+        
+        for tag in ["sfc", "ua"]:
+            flist = [f"{tag}_{i}.grib1" for i in self.steplist]
             for ff in flist:
                 infile = os.path.join(self.dt_path, ff)
+                
+                # Log to standard logger
                 logger.info("SQLITE EXTRACTION: {}", infile)
+                
+                # Append log message to the specified log file if defined
+                if log_file_path:
+                    with open(log_file_path, "a") as log_file:
+                        log_file.write(f"SQLITE EXTRACTION: {infile}\n")
+                
                 if not os.path.isfile(infile):
-                    raise FileNotFoundError(f" missing {infile}")
+                    logger.warning("File not found, skipping: {}", infile)
+                    if log_file_path:
+                        with open(log_file_path, "a") as log_file:
+                            log_file.write(f"File not found, skipping: {infile}\n")
+                    continue  # Skip to the next file
+                
                 loglevel = self.config.get("general.loglevel", LogDefaults.LEVEL).upper()
                 sqlite_logger.setLevel(loglevel)
                 parse_grib_file(
@@ -88,4 +105,3 @@ class ExtractDT(Task):
                     model_name=self.model_name,
                     weights=None,
                 )
-
