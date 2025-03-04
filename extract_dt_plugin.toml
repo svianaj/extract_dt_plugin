@@ -31,6 +31,7 @@
   param_ua = "130/131/132/157"
   stream = "OPER"
   type = "FC"
+  continue_on_fail = true
 
 [extractsqlite]
   parameter_list = "@DEODE_HOME@/data/sqlite/param_list_@CSC@.json"
@@ -39,6 +40,9 @@
   sqlite_path = "@ARCHIVE_ROOT@/sqlite/FCTABLE/@SQLITE_MODEL_NAME@/@YYYY@/@MM@"
   sqlite_template = "FCTABLE_{PP}_{YYYY}{MM}_{HH}.sqlite"
   station_list = "@DEODE_HOME@/data/sqlite/station_list_default.csv"  
+
+[scheduler.ecfvars]
+  ecf_tries = 2
 
 [submission.task_exceptions.RetrieveDT]
   # to find mars executable

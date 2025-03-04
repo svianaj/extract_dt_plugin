@@ -42,6 +42,10 @@ class ExtractDT(Task):
             config["extract_dt.dt_grib_path"],
             basetime=self.basetime,
         )
+        self.max_try = int(config["scheduler.ecfvars.ecf_tries"])
+        self.tryno = int(os.environ.get("ECF_TRYNO"))
+        self.continue_on_fail = config.get("extract_dt.continue_on_fail", False)
+
         logger.info("RETRIEVAL DATE: {}", self.basetime.strftime("%Y%m%d"))
         logger.info("DT_PATH: {}", self.dt_path)
 
@@ -69,6 +73,12 @@ class ExtractDT(Task):
 
     def execute(self):
         """Execute ExtractSQLite on all files."""
+        if self.tryno >= self.max_try and self.continue_on_fail:
+            # This will probably only happen if the retrieval step failed.
+            logger.error("ECF_TRYNO = {}, ECF_TRIES = {}", self.tryno, self.max_try)
+            logger.error("Max number of re-try exceeded. Skipping this day!")
+            return
+
         station_list = pandas.read_csv(self.stationfile, skipinitialspace=True)
 
         for tag in [ "sfc", "ua" ]:
@@ -77,6 +87,7 @@ class ExtractDT(Task):
                 infile = os.path.join(self.dt_path, ff)
                 logger.info("SQLITE EXTRACTION: {}", infile)
                 if not os.path.isfile(infile):
+                    logger.error("Missing file {}", infile)
                     raise FileNotFoundError(f" missing {infile}")
                 loglevel = self.config.get("general.loglevel", LogDefaults.LEVEL).upper()
                 sqlite_logger.setLevel(loglevel)

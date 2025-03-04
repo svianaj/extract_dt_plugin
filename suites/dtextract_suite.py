@@ -123,18 +123,27 @@ class DailyLoopFamily(EcflowSuiteFamily):
         self.ecf_node += var
 
     @staticmethod 
-    def date_basher(basename, micro="%"):
+    def date_basher(basename, time="00:00:00", micro="%"):
         """Export an ECFlow date to a correct ISO format using evaluated bash strings."""
-        # TODO: add "time" arument(s)
-        if micro == "%":
-            fmt = "%%02d"
-        else:
-            fmt = "%02d"
-        time = "00:00:00"
+        # TODO: add "time" argument(s)
+        # This routine uses the fact that if the loop variable is e.g. YMD
+        # ECFlow automatically provies YMD_YYYY, YMD_MM, YMD_DD macro's
+        # BUT: the day and month variables may by single digit numbers
+        #      so we need to use "printf" commands to format them correctly.
+        # ALTERNATIVES:
+        #   YYYY=$(echo {micro}{basename}{micro} | cut -c 1-4)" etc.
+        #   f"$\{{micro}{basename}{micro}:0:4\}-\{{micro}{basename}{micro}:4:2\}-\{{micro}{basename}{micro}:6:2\}"
+#        if micro == "%":
+#            fmt = "%%02d"
+#        else:
+#            fmt = "%02d"
         result = (
-             f"{micro}{basename}_YYYY{micro}" + "-" +
-             f"$(printf {fmt} {micro}{basename}_MM{micro})" + "-" +
-             f"$(printf {fmt} {micro}{basename}_DD{micro})" +
+             f"$(echo {micro}{basename}{micro} | cut -c 1-4)-" +
+             f"$(echo {micro}{basename}{micro} | cut -c 5-6)-" +
+             f"$(echo {micro}{basename}{micro} | cut -c 7-8)" +
+#             f"{micro}{basename}_YYYY{micro}" + "-" +
+#             f"$(printf {fmt} {micro}{basename}_MM{micro})" + "-" +
+#             f"$(printf {fmt} {micro}{basename}_DD{micro})" +
              f"T{time}Z"
              )
         return result

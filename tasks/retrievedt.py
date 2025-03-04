@@ -36,6 +36,9 @@ class RetrieveDT(Task):
         self.minstep = 0
         self.maxstep = int(as_timedelta(config["general.times.forecast_range"]).total_seconds()//3600)
         self.steplist = [ str(i) for i in range(self.minstep,self.maxstep + 1) ]
+        self.max_try = int(config["scheduler.ecfvars.ecf_tries"])
+        self.tryno = int(os.environ.get("ECF_TRYNO"))
+        self.continue_on_fail = config.get("extract_dt.continue_on_fail", False)
 
         self.dt_path = self.platform.substitute(
             config["extract_dt.dt_grib_path"],
@@ -85,9 +88,15 @@ class RetrieveDT(Task):
             RuntimeError: If there is an issue with the work folder.
         """
 
+        if self.tryno >= self.max_try and self.continue_on_fail:
+            logger.error("ECF_TRYNO = {}, ECF_TRIES = {}", self.tryno, self.max_try)
+            logger.error("Max number of re-try exceeded. Skipping this day!")
+            return
+
         if not os.path.exists(self.dt_path):
             deodemakedirs(self.dt_path, unixgroup=self.unix_group)
-        
+
+        tryno = int(os.environ.get("ECF_TRYNO"))
         for tag in [ "sfc", "ua" ]:
             # TODO: check whether files exist
             request = self.create_request(tag)
