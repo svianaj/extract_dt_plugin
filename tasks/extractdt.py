@@ -42,6 +42,7 @@ class ExtractDT(Task):
             config["extract_dt.dt_grib_path"],
             basetime=self.basetime,
         )
+
         logger.info("RETRIEVAL DATE: {}", self.basetime.strftime("%Y%m%d"))
         logger.info("DT_PATH: {}", self.dt_path)
 
@@ -69,6 +70,7 @@ class ExtractDT(Task):
 
     def execute(self):
         """Execute ExtractSQLite on all files."""
+
         station_list = pandas.read_csv(self.stationfile, skipinitialspace=True)
 
         # Determine log file path
