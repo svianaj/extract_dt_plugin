@@ -117,7 +117,11 @@ class RetrieveDT(Task):
         self.write_mars_req(request, f"{tag}.req", "retrieve")
         batch = BatchJob(os.environ, wrapper=self.wrapper)
         mars_bin = self.get_binary("mars")
-        batch.run(f"{mars_bin} {tag}.req")
+        mars_command = f"{mars_bin} {tag}.req"
+        if self.continue_on_fail:
+            # Main purpose is to avoid abort if some fields are missing (e.g. in step 0)
+            mars_command += " || echo FAILURE"
+        batch.run(mars_command)
 
     def doreq_polytope(self, request, tag):
         logger.info("POLYTOPE REQUEST: {}", request)
