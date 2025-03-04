@@ -86,6 +86,8 @@ class ExtractDT(Task):
                 logger.info("SQLITE EXTRACTION: {}", infile)
                 
                 # Append log message to the specified log file if defined
+                # But first, ensure the directory structure exists
+                os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
                 if log_file_path:
                     with open(log_file_path, "a") as log_file:
                         log_file.write(f"SQLITE EXTRACTION: {infile}\n")
