@@ -46,6 +46,7 @@ class RetrieveDT(Task):
         )
         logger.info("DT PATH: {}", self.dt_path)
         logger.info("MIN/MAX STEP: {} {}", self.minstep, self.maxstep)
+        logger.info("BASETIME: {}", self.basetime)
 
     def create_request(self, tag = "sfc"):
         allsteps = "/".join(self.steplist)
@@ -97,7 +98,8 @@ class RetrieveDT(Task):
             deodemakedirs(self.dt_path, unixgroup=self.unix_group)
 
         tryno = int(os.environ.get("ECF_TRYNO"))
-        for tag in [ "sfc", "ua" ]:
+        paramtypes=self.config["extract_dt.paramtypes"]
+        for tag in paramtypes:
             # TODO: check whether files exist
             request = self.create_request(tag)
 
@@ -109,19 +111,24 @@ class RetrieveDT(Task):
             # move files to "semi-permanent"
             flist = [ f"{tag}_{i}.grib1" for i in self.steplist ]
             for gf in flist:
+                if not os.path.exists(gf):
+                    raise RuntimeError(f"Expected file not found: {gf}")
+                if os.path.getsize(gf) == 0:
+                    raise RuntimeError(f"Retrieved file is empty: {gf}")    
                 logger.info("MOVING {}", gf)
                 shutil.move(gf, os.path.join(self.dt_path, gf))
 
     def doreq_mars(self, request, tag):
         logger.info("MARS REQUEST: {}", request)
         self.write_mars_req(request, f"{tag}.req", "retrieve")
-        batch = BatchJob(os.environ, wrapper=self.wrapper)
         mars_bin = self.get_binary("mars")
-        mars_command = f"{mars_bin} {tag}.req"
-        if self.continue_on_fail:
-            # Main purpose is to avoid abort if some fields are missing (e.g. in step 0)
-            mars_command += " || echo FAILURE"
-        batch.run(mars_command)
+        import subprocess
+        try:
+         subprocess.run(["srun", f"{mars_bin}", f"{tag}.req"], check=True)
+        except subprocess.CalledProcessError as e:
+         print(f"Error: MARS request failed with exit code {e.returncode}")
+         print(f"Command Output: {e.output}")
+         # Handle the failure gracefully (e.g., retry, log error, etc.)
 
     def doreq_polytope(self, request, tag):
         logger.info("POLYTOPE REQUEST: {}", request)

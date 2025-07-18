@@ -54,37 +54,60 @@ class ExtractDT(Task):
         self.sqlite_template = self.platform.substitute(
             self.config["extractsqlite.sqlite_template"]
         )
-        self.stationfile = self.platform.substitute(self.config["extractsqlite.station_list"])
-        if not os.path.isfile(self.stationfile):
-            raise FileNotFoundError(f" missing {self.stationfile}")
-        logger.info("Station list: {}", self.stationfile)
-        paramfile = self.platform.substitute(self.config["extractsqlite.parameter_list"])
-        if not os.path.isfile(paramfile):
-            raise FileNotFoundError(f" missing {paramfile}")
-        logger.info("Parameter list: {}", paramfile)
-        with open(paramfile) as pf:
-            self.parameter_list = json.load(pf)
-            pf.close()
+        self.stationfile_ua = self.platform.substitute(self.config["extractsqlite.station_list_ua"])
+        self.stationfile_sfc = self.platform.substitute(self.config["extractsqlite.station_list_sfc"])
+        if not os.path.isfile(self.stationfile_ua):
+            raise FileNotFoundError(f" missing {self.stationfile_ua}")
+        if not os.path.isfile(self.stationfile_sfc):
+            raise FileNotFoundError(f" missing {self.stationfile_sfc}")
+        logger.info("Station list sfc: {}", self.stationfile_sfc)
+        logger.info("Station list ua: {}", self.stationfile_ua)
+        
+        paramfile_ua = self.platform.substitute(self.config["extractsqlite.parameter_list_ua"])
+        paramfile_sfc = self.platform.substitute(self.config["extractsqlite.parameter_list_sfc"])
+        if not os.path.isfile(paramfile_ua):
+            raise FileNotFoundError(f" missing {paramfile_ua}")
+        logger.info("Parameter list ua: {}", paramfile_ua)
+        if not os.path.isfile(paramfile_sfc):
+            raise FileNotFoundError(f" missing {paramfile_sfc}")
+        logger.info("Parameter list sfc: {}", paramfile_sfc)
+
+        with open(paramfile_sfc) as pf_sfc:
+            self.parameter_list_sfc = json.load(pf_sfc)
+            pf_sfc.close()
+        with open(paramfile_ua) as pf_ua:
+            self.parameter_list_ua = json.load(pf_ua)
+            pf_ua.close()
         self.output_settings = self.config["general.output_settings"]
         self.model_name = self.config["extractsqlite.sqlite_model_name"]
 
     def execute(self):
         """Execute ExtractSQLite on all files."""
-
-        station_list = pandas.read_csv(self.stationfile, skipinitialspace=True)
+        param_list = self.parameter_list_sfc
 
         # Determine log file path
         log_file_name = self.config["extractsqlite"].get("log_file")
         log_file_path = os.path.join(self.sqlite_path, log_file_name) if log_file_name else None
-        
-        for tag in ["sfc", "ua"]:
+        paramtypes=self.config["extract_dt.paramtypes"]
+
+        for tag in paramtypes:
             flist = [f"{tag}_{i}.grib1" for i in self.steplist]
+            # Choose parameter list based on tag
+            if tag == "sfc":
+                logger.info("reading sfc param list}")
+                param_list = self.parameter_list_sfc
+                station_list = pandas.read_csv(self.stationfile_sfc, skipinitialspace=True)
+            elif tag == "ua":
+                logger.info("reading sfc param list}")
+                param_list = self.parameter_list_ua
+                station_list = pandas.read_csv(self.stationfile_ua, skipinitialspace=True)
+            else:
+                logger.warning("Unknown tag: {}, skipping...", tag)
+                continue
             for ff in flist:
                 infile = os.path.join(self.dt_path, ff)
-                
                 # Log to standard logger
                 logger.info("SQLITE EXTRACTION: {}", infile)
-                
                 # Append log message to the specified log file if defined
                 # But first, ensure the directory structure exists
                 os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
@@ -103,7 +126,7 @@ class ExtractDT(Task):
                 sqlite_logger.setLevel(loglevel)
                 parse_grib_file(
                     infile=infile,
-                    param_list=self.parameter_list,
+                    param_list=param_list,
                     station_list=station_list,
                     sqlite_template=self.sqlite_path + "/" + self.sqlite_template,
                     model_name=self.model_name,
