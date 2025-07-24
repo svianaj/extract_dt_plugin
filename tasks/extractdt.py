@@ -83,7 +83,6 @@ class ExtractDT(Task):
 
     def execute(self):
         """Execute ExtractSQLite on all files."""
-        param_list = self.parameter_list_sfc
 
         # Determine log file path
         log_file_name = self.config["extractsqlite"].get("log_file")
