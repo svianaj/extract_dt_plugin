@@ -7,7 +7,7 @@
 [general.times]
   end = "2026-06-30T00:00:00Z"
   forecast_range = "PT54H"
-  start = "2025-06-01T00:00:00Z"
+  start = "2025-10-23T00:00:00Z"
 
 [extract_dt]
   class_mars = "OD"
@@ -27,7 +27,7 @@
   levtype_ua = "PL"
   method = "mars"
   #model_name = "DTmars"
-  param_sfc = "49/51/52/131/132/134/141/142/143/151/164/165/166/167/168/186/187/188/228/228050/228057/228058"
+  param_sfc = "49/51/52/131/132/134/141/142/143/151/164/165/166/167/168/186/187/188/228/228057/228058"
   param_ua = "129/130/131/132/133/157"
   stream = "OPER"
   type = "FC"
@@ -56,7 +56,7 @@
   NODES = "#SBATCH --nodes=1"
   NTASKS = "#SBATCH --ntasks=1"
   QOS = "#SBATCH --qos=np"
-  WALLTIME = "#SBATCH --time=12:00:00"
+  WALLTIME = "#SBATCH --time=18:00:00"
 
 [submission.task_exceptions.RetrieveDT.ENV]
   MARS_READANY_BUFFER_SIZE = 17893020000

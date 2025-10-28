@@ -2,13 +2,14 @@
 
 import os
 import shutil
-
 from deode.datetime_utils import as_datetime, as_timedelta
 from deode.logs import logger
 from deode.os_utils import deodemakedirs
 from deode.tasks.base import Task
 from deode.tasks.batch import BatchJob
-
+import numpy as np
+import re
+from eccodes import *
 
 class RetrieveDT(Task):
     """RetrieveDT task."""
@@ -104,12 +105,15 @@ class RetrieveDT(Task):
             request = self.create_request(tag)
 
             if self.method == "mars":
+                logger.info("Sending request to MARS client")                
                 self.doreq_mars(request, tag)
             else:
+                logger.info("Sending request to polytope client")                       
                 self.doreq_polytope(request, tag)
 
             # move files to "semi-permanent"
             flist = [ f"{tag}_{i}.grib1" for i in self.steplist ]
+
             for gf in flist:
                 if not os.path.exists(gf):
                     raise RuntimeError(f"Expected file not found: {gf}")
@@ -117,6 +121,86 @@ class RetrieveDT(Task):
                     raise RuntimeError(f"Retrieved file is empty: {gf}")    
                 logger.info("MOVING {}", gf)
                 shutil.move(gf, os.path.join(self.dt_path, gf))
+
+            # After moving, add cumulative lightning field for surface files
+            if tag == "sfc":
+                self.add_cumulative_litota1(self.dt_path, flist)
+
+
+    def add_cumulative_litota1(self, path, file_list):
+        """
+        Compute cumulative lightning density from sfc_*.grib1 files.
+
+        Parameters
+        ----------
+        path : str
+            Path where GRIB files are stored.
+        file_list : list
+            List of filenames (sfc_i.grib1), must include i=1..max_forecast_range.
+        """
+
+        # Sort files numerically by forecast step
+        def extract_step(fname):
+            m = re.search(r"sfc_(\d+)\.grib1", fname)
+            return int(m.group(1)) if m else -1
+
+        file_list_sorted = sorted(file_list, key=extract_step)
+        logger.info("Processing {} GRIB files from path: {}", len(file_list_sorted), path)
+
+        cumulative = None
+
+        for idx, fname in enumerate(file_list_sorted, start=1):
+            fpath = os.path.join(path, fname)
+            tmp_out = fpath + ".tmp"
+
+            logger.info("Reading file {}/{}: {}", idx, len(file_list_sorted), fname)
+
+            with open(fpath, "rb") as fin, open(tmp_out, "wb") as fout:
+                while True:
+                    gid = codes_grib_new_from_file(fin)
+                    if gid is None:
+                        break
+
+                    shortName = codes_get(gid, "shortName")
+                    if shortName == "litota1":
+                        values = codes_get_values(gid)
+                        if cumulative is None:
+                            cumulative = np.copy(values)
+                            logger.info("Initialized cumulative field from {}", fname)
+                        else:
+                            cumulative += values
+                            logger.info("Updated cumulative field with {}", fname)
+
+                        # Make a new message with the cumulative values
+                        new_gid = codes_clone(gid)
+                        codes_set_values(new_gid, cumulative)
+
+                        # Update the stepRange to reflect accumulation
+                        step = extract_step(fname)
+                        stepRange = f"0-{step}"
+                        codes_set(new_gid, "step", step)        # step = forecast hour, e.g., 2, 3, 6
+                        codes_set(new_gid, "shortName", "litoti")
+                        codes_set(new_gid, "stepType", "accum")
+                        # Force shortName to remain litota1
+                        #codes_set(new_gid, "shortName", "litota1")
+                        # Optionally, define the stepType as accumulation
+                        #codes_set(new_gid, "stepType", "accum")
+
+                        logger.info("Writing cumulative litota1 with stepRange {}", stepRange)
+
+                        # Write the new field
+                        codes_write(new_gid, fout)
+                        codes_release(new_gid)
+
+                    # Also write the original field
+                    codes_write(gid, fout)
+                    codes_release(gid)
+
+            # Replace the original file with updated one
+            os.replace(tmp_out, fpath)
+            logger.info("Updated file {}", fname)
+
+        logger.info("Finished processing all {} files.", len(file_list_sorted))
 
     def doreq_mars(self, request, tag):
         logger.info("MARS REQUEST: {}", request)
