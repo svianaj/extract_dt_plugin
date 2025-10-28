@@ -44,7 +44,7 @@ class DtExtractSuiteDefinition(SuiteDefinition):
         start_date = int(as_datetime(config["general.times.start"]).strftime("%Y%m%d"))
         end_date = int(as_datetime(config["general.times.end"]).strftime("%Y%m%d"))
 
-        loop_date = "YMD"
+        loop_date = "YMD" #start_date
         # We want retrieval to begin with a delay, to make sure MARS data is available.
         # Use _JULIAN for looking at differences > 1 day.
         # Internal ecflow time variables are "HHMM" integers.
@@ -55,7 +55,8 @@ class DtExtractSuiteDefinition(SuiteDefinition):
                 " OR " +
                 f"(:ECF_JULIAN - :{loop_date}_JULIAN gt {delay.days})"
                 )
-
+        print("time_trigger is")
+        print(time_trigger)
         day_family = DailyLoopFamily(
             name = "DT_loop",
             parent = self.suite,

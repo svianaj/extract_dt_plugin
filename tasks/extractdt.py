@@ -10,6 +10,9 @@ from grib2sqlite import parse_grib_file
 from deode.datetime_utils import as_datetime, as_timedelta
 from deode.logs import LogDefaults, logger
 from deode.tasks.base import Task
+import subprocess
+from datetime import datetime
+import tarfile
 
 
 class ExtractDT(Task):
@@ -54,17 +57,23 @@ class ExtractDT(Task):
         self.sqlite_template = self.platform.substitute(
             self.config["extractsqlite.sqlite_template"]
         )
-        self.stationfile_ua = self.platform.substitute(self.config["extractsqlite.station_list_ua"])
-        self.stationfile_sfc = self.platform.substitute(self.config["extractsqlite.station_list_sfc"])
+
+        # Get & read param/station list (for deterministic case) from config toml file
+        # Stop if any of them not found
+        det_list = self.config["extractsqlite"]["parameter_list_default_det"]
+        for entry in det_list:
+            if "station_list_default.csv" in entry["location_file"]:
+                self.stationfile_sfc = self.platform.substitute(entry["location_file"])
+                paramfile_sfc = self.platform.substitute(entry["param_file"])
+            elif "temp_list_default.csv" in entry["location_file"]:
+                self.stationfile_ua = self.platform.substitute(entry["location_file"])
+                paramfile_ua = self.platform.substitute(entry["param_file"])
         if not os.path.isfile(self.stationfile_ua):
             raise FileNotFoundError(f" missing {self.stationfile_ua}")
+        logger.info("Station list ua: {}", self.stationfile_ua)
         if not os.path.isfile(self.stationfile_sfc):
             raise FileNotFoundError(f" missing {self.stationfile_sfc}")
         logger.info("Station list sfc: {}", self.stationfile_sfc)
-        logger.info("Station list ua: {}", self.stationfile_ua)
-        
-        paramfile_ua = self.platform.substitute(self.config["extractsqlite.parameter_list_ua"])
-        paramfile_sfc = self.platform.substitute(self.config["extractsqlite.parameter_list_sfc"])
         if not os.path.isfile(paramfile_ua):
             raise FileNotFoundError(f" missing {paramfile_ua}")
         logger.info("Parameter list ua: {}", paramfile_ua)
@@ -131,3 +140,52 @@ class ExtractDT(Task):
                     model_name=self.model_name,
                     weights=None,
                 )
+
+        if self.model_name == "IFS":  # Extra block to download hlam's sqlite data for IFSENS
+            # Extract YYYY and MM from basetime
+            yyyy = self.basetime.strftime("%Y")
+            mm = self.basetime.strftime("%m")
+            logger.info("Start retrieving of IFSENS FCTABLES from hlam: Year {}, Month {}", yyyy, mm)
+            # Build the extraction path by replacing IFS → IFSENS
+            sqlite_extract_path = self.sqlite_path.replace(self.model_name, "IFSENS")
+            logger.info("Output path: {}", sqlite_extract_path)
+            os.makedirs(sqlite_extract_path, exist_ok=True)
+
+            # Path in the EC filesystem
+            remote_dir = f"ec:/hlam/harp_bologna/FCTABLE/IFSENS/{yyyy}/{mm}/"
+
+            # 1) Get list of .tar.gz files via 'els'
+            tar_files = []
+            try:
+                result = subprocess.run(
+                    ["els", remote_dir],
+                    check=True,
+                    capture_output=True,
+                    text=True
+                )
+                tar_files = [f for f in result.stdout.splitlines() if f.endswith(".tar.gz")]
+            except subprocess.CalledProcessError as e:
+                logger.warning("Failed to list files in %s: %s", remote_dir, e.stderr.strip())
+
+            # 2) Download & uncompress each file (only if tar_files found)
+            if tar_files:
+                for tar_file in tar_files:
+                    remote_file_path = os.path.join(remote_dir, tar_file)
+                    local_file_path = os.path.join(sqlite_extract_path, tar_file)
+
+                    # Download using 'ecp'
+                    subprocess.run(
+                        ["ecp", remote_file_path, local_file_path],
+                        check=True
+                    )
+
+                    # Extract contents
+                    with tarfile.open(local_file_path, "r:gz") as tar:
+                        tar.extractall(path=sqlite_extract_path)
+
+                    # Remove .tar.gz file
+                    os.remove(local_file_path)
+            else:
+                logger.info("No .tar.gz files to download from %s. Skipping extraction.", remote_dir)
+
+
