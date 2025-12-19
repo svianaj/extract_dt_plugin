@@ -12,7 +12,6 @@ To create an extraction suite from a config.toml and the extract_dt_plugin.toml 
 
 Then create and launch the extraction suite with these commands: 
 
-> poetry shell
 
 > deode case ?configuration -o extract_dt_suite.toml
 
