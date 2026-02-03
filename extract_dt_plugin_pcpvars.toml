@@ -1,5 +1,5 @@
 [general]
-  case = "EXTRACT_IFS_NRT"
+  case = "EXTRACT_DT_iekm_NRTpcp"
 
 [general.plugin_registry.plugins]
   extract_dt_plugin = "/ec/res4/hpcperm/snh02/DE_Verification/plugins/"
@@ -7,15 +7,15 @@
 [general.times]
   end = "2026-06-30T00:00:00Z"
   forecast_range = "PT54H"
-  start = "2026-01-12T00:00:00Z"
+  start = "2026-01-01T00:00:00Z"
 
 [extract_dt]
-  class_mars = "OD"
+  class_mars = "RD"
   class_polytope = "D1"
-  dataset = "IFS"
+  dataset = "extremes_dt"
   delay = "PT1D14H"
-  dt_grib_path = "/ec/res4/scratch/snh02/DE_Verification/GRIBS/IFS/@YYYY@/@MM@/@DD@"
-  expver_mars = "1"
+  dt_grib_path = "/ec/res4/scratch/snh02/DE_Verification/GRIBS_pcp/GDT_iekm/@YYYY@/@MM@/@DD@"
+  expver_mars = "iekm"
   expver_polytope = "0001"
   # area = "72.0/-26.0/26.0/30.0"
   # sfc is grid point, so we can retrieve at high resolution
@@ -26,16 +26,15 @@
   levtype_sfc = "SFC"
   levtype_ua = "PL"
   method = "mars"
-  param_sfc = "49.128/51.128/52.128/131.128/132.128/134.128/141.128/142.128/143.128/151.128/164.128/165.128/166.128/167.128/168.128/186.128/187.128/188.128/228.128/228057/228058"
-  param_ua = "129/130/131/132/133/157"
+  param_sfc = "228.128/228051"
+  param_ua = ""
   stream = "OPER"
   type = "FC"
-  #paramtypes= ["sfc"] 
-  paramtypes= ["sfc","ua"]
+  paramtypes= ["sfc"] 
 
 [extractsqlite]
   selection = "PT1H"
-  sqlite_model_name = "IFS"
+  sqlite_model_name = "GDT_iekm"
   sqlite_path = "/ec/res4/scratch/snh02/DE_Verification/REF_FCTABLES/@SQLITE_MODEL_NAME@/@YYYY@/@MM@"
   sqlite_template = "FCTABLE_{PP}_{YYYY}{MM}_{HH}.sqlite"
   station_list_sfc = "@DEODE_HOME@/data/sqlite/station_list_default.csv"
